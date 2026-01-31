@@ -6,6 +6,9 @@ Console.WriteLine("[info] startup..");
 
 TcpListener wsApp = new(IPAddress.Parse("127.0.0.1"), 8080); // localの8080ポートで作成
 
+
+// TODO: IRCなので後はbroadcastを追加する必要がある。
+// TODO: 上の追加が終わったらcommandなど特殊系の追加をしたい。
 wsApp.Start();
 while (true)
 {

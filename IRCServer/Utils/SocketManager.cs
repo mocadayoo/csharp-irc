@@ -6,6 +6,7 @@ namespace IRCServer.Utils;
 public class SocketManager
 {
     private readonly NetworkStream _stream;
+    public Action<SocketManager, string>? OnMessage { get; set; }
 
     public SocketManager(NetworkStream stream, int timeOut = (30 * 1000))
     {
@@ -115,6 +116,7 @@ public class SocketManager
                 }
 
                 string message = Encoding.UTF8.GetString(payload);
+                OnMessage?.Invoke(this, message);
             }
         }
         catch (Exception e)
