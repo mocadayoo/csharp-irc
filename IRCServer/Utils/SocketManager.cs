@@ -2,6 +2,7 @@ using System.Text;
 using System.Net.Sockets;
 using IRCServer.Types;
 using IRC.Shared.Types;
+using Opcode = IRCServer.Types.Opcode;
 
 namespace IRCServer.Utils;
 

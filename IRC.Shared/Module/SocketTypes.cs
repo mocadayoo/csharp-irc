@@ -1,4 +1,4 @@
-namespace IRCServer.Types;
+namespace IRC.Shared.Types;
 
 /// <summary>
 /// WebSocketのOpcodeを名前で扱いやすく定義

@@ -1,5 +1,3 @@
-using IRCServer.Types;
-
 namespace IRC.Shared.Types;
 
 public interface ISendable
