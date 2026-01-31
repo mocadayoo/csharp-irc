@@ -31,6 +31,10 @@ async Task ReceiveLoop(ClientWebSocket client)
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 var json = IRCModule.MessageToJson(message);
+
+                if (json != null && json.Type == IRCMessageTypes.Chat) {
+                    Console.WriteLine(json.Message);
+                }
             }
         }
     }

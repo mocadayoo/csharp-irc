@@ -35,9 +35,16 @@ while (true)
 
                 if (IRCModule.IRCHeartBeat(manager, json)) return;
 
-                if (json.Type == IRCMessageTypes.Chat)
+                if (json.Type == IRCMessageTypes.Chat && json.Message != null && json.Message != "")
                 {
                     Console.WriteLine(json.Message);
+                    ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
+                    {
+                        Type = IRCMessageTypes.Chat,
+                        Message = json.Message,
+                        Channel = null,
+                        Special = null
+                    }));
                 }
             };
             sockManager.OnClose = (manager) =>

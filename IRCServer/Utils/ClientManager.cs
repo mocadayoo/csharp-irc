@@ -20,6 +20,24 @@ public static class ClientManager
         }
     }
 
+    public static void Broadcast(string message)
+    {
+        foreach (var client in _clients)
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    client.Send(message);
+                }
+                catch
+                {
+                    return;
+                }
+            });
+        }
+    }
+
     public static int ClientCount()
     {
         lock (_clients)

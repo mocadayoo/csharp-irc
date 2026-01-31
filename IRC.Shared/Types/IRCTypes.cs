@@ -9,6 +9,7 @@ public enum IRCMessageTypes
     HEARTBEAT,
     PONG,
     Chat,
+    Command
 }
 public class IRCResponseJson
 {
