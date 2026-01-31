@@ -1,5 +1,8 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
+using IRC.Shared.Types;
+using IRC.Shared.Modules;
+using System.ComponentModel;
 
 Uri ServerUri = new("ws://localhost:8080");
 ClientWebSocket Client = new ClientWebSocket();
@@ -27,7 +30,7 @@ async Task ReceiveLoop(ClientWebSocket client)
             else
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                Console.WriteLine($"[server]: {message}");
+                var json = IRCModule.MessageToJson(message);
             }
         }
     }
@@ -41,7 +44,14 @@ async Task HeartBeat(ClientWebSocket ws, TimeSpan timeSpan)
 {
     while (true)
     {
-        await SendAsync(ws, "HEARTBEAT");
+        var json = IRCModule.JsonToMessage(new IRCResponseJson
+        {
+            Type = IRCMessageTypes.HEARTBEAT,
+            Message = "",
+            Channel = "",
+            Special = ""
+        });
+        await SendAsync(ws, json);
         await Task.Delay(timeSpan);
     }
 }
@@ -58,9 +68,15 @@ try
         {
             Console.Write("メッセージを入力: ");
             string input = Console.ReadLine() ?? "";
-            if (string.IsNullOrEmpty(input)) break;
 
-            await SendAsync(Client, input);
+            var jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
+            {
+                Type = IRCMessageTypes.Chat,
+                Message = input,
+                Channel = null,
+                Special = null
+            });
+            await SendAsync(Client, jsonMessage);
         }
     }
 

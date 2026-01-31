@@ -1,10 +1,11 @@
 using System.Text;
 using System.Net.Sockets;
 using IRCServer.Types;
+using IRC.Shared.Types;
 
 namespace IRCServer.Utils;
 
-public class SocketManager
+public class SocketManager : ISendable
 {
     private readonly NetworkStream _stream;
     public Action<SocketManager, string?, byte, byte[]>? OnMessage { get; set; }
@@ -22,7 +23,7 @@ public class SocketManager
         ReceiveLoop();
     }
 
-    public void Send(string? message, byte opcode = Opcode.Text)
+    public void Send(string message, byte opcode = Opcode.Text)
     {
         if (message == null) return;
         byte headOneByte = (byte)(0x80 | (opcode & 0x0F)); // 右4bitだけに変換

@@ -8,18 +8,19 @@ namespace IRCServer.Utils;
 
 public static class SocketUtils
 {
-    // heartbeatなどのデフォルトで提供するアクションの実装
+    // TODO: heartbeatなどのデフォルトで提供するアクションの実装
     public static bool HeartBeat(SocketManager manager, byte opcode)
     {
         if (opcode == Opcode.Ping)
         {
+            Console.WriteLine("recieve ping i do pong!");
             manager.Send("", Opcode.Pong);
             return true;
         }
         return false;
     }
 
-    public static bool HeartBeatWithCustomString(SocketManager manager, string? message, string trigger, string reply)
+    public static bool HeartBeatWithCustomString(SocketManager manager, string message, string trigger, string reply)
     {
         if (message == trigger)
         {
