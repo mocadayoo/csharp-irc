@@ -20,6 +20,6 @@ while (true)
         SocketUtils.HandShake.DoHandShake(stream, header);
         Console.WriteLine("[info] HandShaked!");
 
-        _ = Task.Run(() => new SocketManager(stream));
+        _ = Task.Run(() => new SocketManager(stream, 30*1000));
     }
 }
