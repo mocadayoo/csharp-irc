@@ -11,7 +11,11 @@ public class SocketManager
     {
         _stream = stream;
         _stream.ReadTimeout = timeOut;
+    }
 
+    public void StartReceiver()
+    {
+        ClientManager.Add(this);
         ReceiveLoop();
     }
 
@@ -77,6 +81,7 @@ public class SocketManager
         finally
         {
             Close();
+            ClientManager.Remove(this);
         }
     }
 
