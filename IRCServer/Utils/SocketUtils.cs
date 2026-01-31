@@ -2,11 +2,32 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Net.Sockets;
+using IRCServer.Types;
 
 namespace IRCServer.Utils;
 
 public static class SocketUtils
 {
+    // heartbeatなどのデフォルトで提供するアクションの実装
+    public static bool HeartBeat(SocketManager manager, byte opcode)
+    {
+        if (opcode == Opcode.Ping)
+        {
+            manager.Send("", Opcode.Pong);
+            return true;
+        }
+        return false;
+    }
+
+    public static bool HeartBeatWithCustomString(SocketManager manager, string? message, string trigger, string reply)
+    {
+        if (message == trigger)
+        {
+            manager.Send(reply);
+            return true;
+        }
+        return false;
+    }
     public static class HandShake
     {
         public static (bool, string? header) IsWant(NetworkStream stream)

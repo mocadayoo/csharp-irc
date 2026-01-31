@@ -25,8 +25,16 @@ while (true)
 
         _ = Task.Run(() =>
         {
-            SocketManager manager = new(stream, 30 * 1000);
-            manager.Listen();
+            SocketManager sockManager = new(stream, 30 * 1000);
+            sockManager.OnMessage = (manager, message, opcode, payload) =>
+            {
+                if (SocketUtils.HeartBeatWithCustomString(sockManager, message, "HEARTBEAT", "PONG")) return;
+            };
+            sockManager.OnClose = (manager) =>
+            {
+                Console.WriteLine("[info] client closed connection");
+            };
+            sockManager.Listen();
         });
     }
 }

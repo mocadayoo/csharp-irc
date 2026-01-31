@@ -15,6 +15,7 @@ async Task ReceiveLoop(ClientWebSocket client)
     byte[] buffer = new byte[1024 * 4];
     try
     {
+        _ = HeartBeat(Client, TimeSpan.FromSeconds(5));
         while (client.State == WebSocketState.Open)
         {
             var result = await client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
@@ -33,6 +34,15 @@ async Task ReceiveLoop(ClientWebSocket client)
     catch (Exception ex)
     {
         Console.WriteLine($"recive error: {ex.Message}");
+    }
+}
+
+async Task HeartBeat(ClientWebSocket ws, TimeSpan timeSpan)
+{
+    while (true)
+    {
+        await SendAsync(ws, "HEARTBEAT");
+        await Task.Delay(timeSpan);
     }
 }
 

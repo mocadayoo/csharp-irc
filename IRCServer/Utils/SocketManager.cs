@@ -1,14 +1,16 @@
 using System.Text;
 using System.Net.Sockets;
+using IRCServer.Types;
 
 namespace IRCServer.Utils;
 
 public class SocketManager
 {
     private readonly NetworkStream _stream;
-    public Action<SocketManager, string>? OnMessage { get; set; }
+    public Action<SocketManager, string?, byte, byte[]>? OnMessage { get; set; }
+    public Action<SocketManager>? OnClose { get; set; }
 
-    public SocketManager(NetworkStream stream, int timeOut = (30 * 1000))
+    public SocketManager(NetworkStream stream, int timeOut = 30 * 1000)
     {
         _stream = stream;
         _stream.ReadTimeout = timeOut;
@@ -20,8 +22,10 @@ public class SocketManager
         ReceiveLoop();
     }
 
-    public void Send(string message)
+    public void Send(string? message, byte opcode = Opcode.Text)
     {
+        if (message == null) return;
+        byte headOneByte = (byte)(0x80 | (opcode & 0x0F)); // 右4bitだけに変換
         byte[] payload = Encoding.UTF8.GetBytes(message);
         byte[] header;
 
@@ -29,13 +33,13 @@ public class SocketManager
         if (payload.Length <= 125)
         {
             header = new byte[2];
-            header[0] = 0x81; // Opcode text frame
+            header[0] = headOneByte; // Opcode text frame
             header[1] = (byte)payload.Length;
         }
         else if (payload.Length <= 65535)
         {
             header = new byte[4];
-            header[0] = 0x81;
+            header[0] = headOneByte;
             header[1] = 126; // 126指定　2byte
             byte[] lenBytes = BitConverter.GetBytes((ushort)payload.Length);
             Array.Reverse(lenBytes);
@@ -44,7 +48,7 @@ public class SocketManager
         else
         {
             header = new byte[10];
-            header[0] = 0x81;
+            header[0] = headOneByte;
             header[1] = 127; // 127指定 6byte
             byte[] lenBytes = BitConverter.GetBytes((long)payload.Length);
             Array.Reverse(lenBytes);
@@ -60,7 +64,7 @@ public class SocketManager
             }
         } catch
         {
-            Close();
+            this.Close();
         }
     }
 
@@ -79,6 +83,13 @@ public class SocketManager
                 // [1] にはmaskのflagとdataのlength
                 byte[] head = new byte[2];
                 _stream.ReadExactly(head);
+
+                byte opcode = (byte)(head[0] & 0x0F);
+                // もしcloseの場合は閉じる
+                if (opcode == Opcode.Close) {
+                    this.Close();
+                    break;
+                }
 
                 bool isMask = (head[1] & 0x80) != 0; // 一番左の1bitを読む
                 long payloadLength = head[1] & 0x7F; // mask flag以外の右側の7bitを読む
@@ -116,7 +127,7 @@ public class SocketManager
                 }
 
                 string message = Encoding.UTF8.GetString(payload);
-                OnMessage?.Invoke(this, message);
+                OnMessage?.Invoke(this, message, opcode, payload);
             }
         }
         catch (Exception e)
@@ -125,12 +136,13 @@ public class SocketManager
         }
         finally
         {
-            Close();
+            this.Close();
         }
     }
 
     public void Close()
     {
+        OnClose?.Invoke(this);
         _stream.Close();
         ClientManager.Remove(this);
     }
