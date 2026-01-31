@@ -13,10 +13,54 @@ public class SocketManager
         _stream.ReadTimeout = timeOut;
     }
 
-    public void StartReceiver()
+    public void Listen()
     {
         ClientManager.Add(this);
         ReceiveLoop();
+    }
+
+    public void Send(string message)
+    {
+        byte[] payload = Encoding.UTF8.GetBytes(message);
+        byte[] header;
+
+        // headerの組み立て 125以下 126 127指定
+        if (payload.Length <= 125)
+        {
+            header = new byte[2];
+            header[0] = 0x81; // Opcode text frame
+            header[1] = (byte)payload.Length;
+        }
+        else if (payload.Length <= 65535)
+        {
+            header = new byte[4];
+            header[0] = 0x81;
+            header[1] = 126; // 126指定　2byte
+            byte[] lenBytes = BitConverter.GetBytes((ushort)payload.Length);
+            Array.Reverse(lenBytes);
+            Array.Copy(lenBytes, 0, header, 2, 2);
+        }
+        else
+        {
+            header = new byte[10];
+            header[0] = 0x81;
+            header[1] = 127; // 127指定 6byte
+            byte[] lenBytes = BitConverter.GetBytes((long)payload.Length);
+            Array.Reverse(lenBytes);
+            Array.Copy(lenBytes, 0, header, 2, 8);
+        }
+
+        try
+        {
+            lock (_stream)
+            {
+                _stream.Write(header, 0, header.Length);
+                _stream.Write(payload, 0, payload.Length);
+            }
+        } catch
+        {
+            Close();
+        }
     }
 
     private void ReceiveLoop()
@@ -39,22 +83,21 @@ public class SocketManager
                 long payloadLength = head[1] & 0x7F; // mask flag以外の右側の7bitを読む
 
                 byte[] lenBuf;
-                switch (payloadLength)
+                // length <= 125 まではそのまま使える
+                // それ以外のケースの場合2byte先,8byte先を読む
+                if (payloadLength == 126)
                 {
-                    // length <= 125 まではそのまま使える
-                    // それ以外のケースの場合2byte先,8byte先を読む
-                    case 126:
-                        lenBuf = new byte[2];
-                        _stream.ReadExactly(lenBuf);
-                        Array.Reverse(lenBuf);
-                        payloadLength = BitConverter.ToUInt16(lenBuf, 0);
-                        break;
-                    case 127:
-                        lenBuf = new byte[8];
-                        _stream.ReadExactly(lenBuf);
-                        Array.Reverse(lenBuf);
-                        payloadLength = BitConverter.ToInt64(lenBuf, 0);
-                        break;
+                    lenBuf = new byte[2];
+                    _stream.ReadExactly(lenBuf);
+                    Array.Reverse(lenBuf);
+                    payloadLength = BitConverter.ToUInt16(lenBuf, 0);
+                }
+                else if (payloadLength >= 127)
+                {
+                    lenBuf = new byte[8];
+                    _stream.ReadExactly(lenBuf);
+                    Array.Reverse(lenBuf);
+                    payloadLength = BitConverter.ToInt64(lenBuf, 0);
                 }
 
                 byte[] masks = new byte[4];
@@ -81,12 +124,12 @@ public class SocketManager
         finally
         {
             Close();
-            ClientManager.Remove(this);
         }
     }
 
     public void Close()
     {
         _stream.Close();
+        ClientManager.Remove(this);
     }
 }
