@@ -128,7 +128,7 @@ public class SocketManager : ISendable
                     }
                 }
 
-                string message = Encoding.UTF8.GetString(payload);
+                string message = Encoding.UTF8.GetString(payload).Trim('\0');
                 OnMessage?.Invoke(this, message, opcode, payload);
             }
         }

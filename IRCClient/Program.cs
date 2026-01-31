@@ -4,6 +4,9 @@ using IRC.Shared.Types;
 using IRC.Shared.Modules;
 using System.ComponentModel;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.InputEncoding = System.Text.Encoding.UTF8;
+
 Uri ServerUri = new("ws://localhost:8080");
 ClientWebSocket Client = new ClientWebSocket();
 
@@ -72,7 +75,7 @@ try
         {
             Console.Write("メッセージを入力: ");
             string input = Console.ReadLine() ?? "";
-
+            
             var jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
             {
                 Type = IRCMessageTypes.Chat,
