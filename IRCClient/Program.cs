@@ -4,6 +4,7 @@ using IRC.Shared.Types;
 using IRC.Shared.Modules;
 
 string currentInput = "";
+string currentChannel = "default";
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 Console.InputEncoding = System.Text.Encoding.UTF8;
 
@@ -57,8 +58,11 @@ async Task ReceiveLoop(ClientWebSocket client)
 
                 if (json.Type == IRCMessageTypes.CommandResponse)
                 {
-                    WriteConsole(json.Message);
-                    WriteConsole(json.Special);
+                    if (json.Message == "switch"  && json.Special == "success")
+                    {
+                        WriteConsole($"switched channel your now on {json.Channel}");
+                        currentChannel = json.Channel;
+                    }
                 }
             }
         }
@@ -89,9 +93,10 @@ string BuildSendJson(string input)
 {
     if (input[0] == '/')
     {
-        string[] commandArgs = input.Substring(1).Split(' ');
-        string command = commandArgs[0].ToLower();
+        string[] parts = input.Substring(1).Split(' ');
+        string command = parts[0].ToLower();
 
+        string[] commandArgs = parts[1..];
         string jsonMessage = "";
 
         switch (command)
@@ -102,12 +107,21 @@ string BuildSendJson(string input)
                 jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
                 {
                     Type = IRCMessageTypes.Command,
-                    Message = "switch",
+                    Message = null,
                     Channel = channelName,
-                    Special = null
+                    Special = "switch"
                 });
                 break;
-            case "latency":
+            case "nick":
+                string nickName = commandArgs[0];
+
+                jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
+                {
+                    Type = IRCMessageTypes.Command,
+                    Message = nickName,
+                    Channel = currentChannel,
+                    Special = "nick"
+                });
                 break;
         }
 
@@ -117,7 +131,7 @@ string BuildSendJson(string input)
     {
         Type = IRCMessageTypes.Chat,
         Message = input,
-        Channel = null,
+        Channel = currentChannel,
         Special = null
     });
 }

@@ -1,19 +1,29 @@
+using IRC.Shared.Types;
+using IRC.Shared.Modules;
+
 namespace IRCServer.Utils;
 
-// TODO: クライアントごとにnameを付けたりして idによる管理とか join leaveのnoticeを行う
 public static class ClientManager
 {
-    private static readonly Dictionary<string, SocketManager> _clients = [];
+    private static readonly Dictionary<string, IRCUser> _clients = [];
 
-    public static void Add(SocketManager client)
+    public static IRCUser Add(ISendable socket)
     {
+        if (string.IsNullOrEmpty(socket.GUID))
+        {
+            socket.GUID = Guid.NewGuid().ToString();
+        }
+
+        var newUser = new IRCUser(socket.GUID, socket);
+
         lock (_clients)
         {
-            _clients[client.GUID] = client;
+            _clients[newUser.GUID] = newUser;
         }
+        return newUser;
     }
 
-    public static void Remove(SocketManager client)
+    public static void Remove(ISendable client)
     {
         lock (_clients)
         {
@@ -21,39 +31,42 @@ public static class ClientManager
         }
     }
 
-    public static void Broadcast(string message, SocketManager sender)
+    public static IRCUser? GetUser(string guid)
     {
-        List<SocketManager> currentClients;
         lock (_clients)
         {
-            currentClients = _clients.Values.ToList();
+            return _clients.GetValueOrDefault(guid);
+        }
+    }
+
+    public static void Broadcast(string message, IRCUser sender)
+    {
+        IRCUser[] allUsers;
+        lock (_clients)
+        {
+            allUsers = _clients.Values.ToArray();
         }
 
-        currentClients.Remove(sender);
-        foreach (var client in currentClients)
+        var sendClients = allUsers.Where(u =>
+            u.GUID != sender.GUID &&
+            u.CurrentChannel == sender.CurrentChannel
+        ); // filter 自分以外 && 自分のチャンネルと同じチャンネルのユーザー
+
+        foreach (var client in sendClients)
         {
             _ = Task.Run(() =>
             {
-                if (client.currentChannel == sender.currentChannel)
+                try
                 {
-                    try
-                    {
-                        client.Send(message);
-                    }
-                    catch
-                    {
-                        return;
-                    }
+                    client.Socket.Send(message);
                 }
+                catch { } // 無視
             });
         }
     }
 
     public static int ClientCount()
     {
-        lock (_clients)
-        {
-            return _clients.Count;
-        }
+        lock (_clients) return _clients.Count;
     }
 }

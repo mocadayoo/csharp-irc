@@ -12,7 +12,6 @@ public static class SocketUtils
     {
         if (opcode == Opcode.Ping)
         {
-            Console.WriteLine("recieve ping i do pong!");
             manager.Send("", Opcode.Pong);
             return true;
         }

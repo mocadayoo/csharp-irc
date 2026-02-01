@@ -24,16 +24,23 @@ while (true)
         _ = Task.Run(() =>
         {
             SocketManager sockManager = new(stream, 30 * 1000);
+            IRCUser user = ClientManager.Add(sockManager);
             ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
             {
                 Type = IRCMessageTypes.Notify,
-                Message = $"[join] {sockManager.GUID.Substring(32)} has joiend",
-                Channel = sockManager.currentChannel,
+                Message = $"[{user.CurrentChannel}] --> {user.Nickname} has joiend",
+                Channel = user.CurrentChannel,
                 Special = null
-            }), sockManager);
+            }), user);
 
             sockManager.OnMessage = (manager, message, opcode, payload) =>
             {
+                var userData = ClientManager.GetUser(manager.GUID);
+                if (userData == null)
+                {
+                    Console.WriteLine($"{manager.GUID} user are not in ClientManager List");
+                    return;
+                }
                 if (string.IsNullOrEmpty(message)) return;
 
                 IRCResponseJson? json = IRCModule.MessageToJson(message);
@@ -43,19 +50,18 @@ while (true)
 
                 if (json.Type == IRCMessageTypes.Chat && json.Message != null && json.Message != "")
                 {
-                    Console.WriteLine(json.Message);
                     ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
                     {
                         Type = IRCMessageTypes.Chat,
-                        Message = $"[{sockManager.GUID.Substring(32)}] {json.Message}",
-                        Channel = null,
+                        Message = $"[{userData.CurrentChannel}] <{userData.Nickname}> {json.Message}",
+                        Channel = userData.CurrentChannel,
                         Special = null
-                    }), sockManager);
+                    }), userData);
                 }
 
                 if (json.Type == IRCMessageTypes.Command)
                 {
-                    HandleCommand(json, sockManager);
+                    HandleCommand(json, userData);
                 }
             };
             sockManager.OnClose = (manager) =>
@@ -63,33 +69,65 @@ while (true)
                 ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
                 {
                     Type = IRCMessageTypes.Notify,
-                    Message = $"[leave] {sockManager.GUID.Substring(32)} has left",
-                    Channel = sockManager.currentChannel,
+                    Message = $"[{user.CurrentChannel}] <-- {user.Nickname} has left",
+                    Channel = user.CurrentChannel,
                     Special = null
-                }), sockManager);
+                }), user);
                 Console.WriteLine("[info] client closed connection");
+                ClientManager.Remove(manager);
             };
             sockManager.Listen();
         });
     }
 }
 
-static void HandleCommand(IRCResponseJson json, SocketManager manager)
+static void HandleCommand(IRCResponseJson json, IRCUser user)
 {
-    switch (json.Message)
+    switch (json.Special)
     {
         case "switch":
-            if (json.Channel == null || json.Channel == "") break;
-            manager.currentChannel = json.Channel;
-
-            var Response = IRCModule.JsonToMessage(new IRCResponseJson
             {
-                Type = IRCMessageTypes.CommandResponse,
-                Message = $"now your channel in {json.Channel}",
-                Channel = null,
-                Special = "success",
-            });
-            manager.Send(Response);
-            break;
+                if (json.Channel == null || json.Channel == "") break;
+                user.CurrentChannel = json.Channel;
+
+                var Response = IRCModule.JsonToMessage(new IRCResponseJson
+                {
+                    Type = IRCMessageTypes.CommandResponse,
+                    Message = "switch",
+                    Channel = user.CurrentChannel,
+                    Special = "success",
+                });
+                user.Socket.Send(Response);
+                break;
+            }
+        case "nick":
+            {
+                if (json.Message == "") break;
+
+                var Response = "";
+                if (json.Message.Length >= 32)
+                {
+                    Response = IRCModule.JsonToMessage(new IRCResponseJson
+                    {
+                        Type = IRCMessageTypes.CommandResponse,
+                        Message = "nick",
+                        Channel = user.CurrentChannel,
+                        Special = "error",
+                    });
+                }
+                else
+                {
+                    user.Nickname = json.Message ?? user.Nickname;
+                    Response = IRCModule.JsonToMessage(new IRCResponseJson
+                    {
+                        Type = IRCMessageTypes.CommandResponse,
+                        Message = "nick",
+                        Channel = user.CurrentChannel,
+                        Special = "success",
+                    });
+                }
+                user.Socket.Send(Response);
+                break;
+            }
     }
 }

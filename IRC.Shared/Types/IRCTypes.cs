@@ -2,7 +2,9 @@ namespace IRC.Shared.Types;
 
 public interface ISendable
 {
+    string GUID { get; set; } 
     void Send(string message, byte opcode = Opcode.Text);
+    void Close();
 }
 public enum IRCMessageTypes
 {

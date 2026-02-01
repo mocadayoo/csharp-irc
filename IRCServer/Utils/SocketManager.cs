@@ -1,6 +1,5 @@
 using System.Text;
 using System.Net.Sockets;
-using IRCServer.Types;
 using IRC.Shared.Types;
 using Opcode = IRCServer.Types.Opcode;
 
@@ -10,8 +9,7 @@ public class SocketManager : ISendable
 {
     private readonly NetworkStream _stream;
     private bool _isClosed = false;
-    public string GUID = Guid.NewGuid().ToString();
-    public string currentChannel = "default";
+    public string GUID { get; set; } = string.Empty;
     public Action<SocketManager, string?, byte, byte[]>? OnMessage { get; set; }
     public Action<SocketManager>? OnClose { get; set; }
 
@@ -149,9 +147,8 @@ public class SocketManager : ISendable
     {
         if (_isClosed) return;
         _isClosed = true;
-        
+
         OnClose?.Invoke(this);
         _stream.Close();
-        ClientManager.Remove(this);
     }
 }
