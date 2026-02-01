@@ -1,14 +1,15 @@
 namespace IRCServer.Utils;
 
+// TODO: クライアントごとにnameを付けたりして idによる管理とか join leaveのnoticeを行う
 public static class ClientManager
 {
-    private static readonly List<SocketManager> _clients = new();
+    private static readonly Dictionary<string, SocketManager> _clients = [];
 
     public static void Add(SocketManager client)
     {
         lock (_clients)
         {
-            _clients.Add(client);
+            _clients[client.GUID] = client;
         }
     }
 
@@ -16,13 +17,20 @@ public static class ClientManager
     {
         lock (_clients)
         {
-            _clients.Remove(client);
+            _clients.Remove(client.GUID);
         }
     }
 
     public static void Broadcast(string message, SocketManager sender)
     {
-        foreach (var client in _clients)
+        List<SocketManager> currentClients;
+        lock (_clients)
+        {
+            currentClients = _clients.Values.ToList();
+        }
+
+        currentClients.Remove(sender);
+        foreach (var client in currentClients)
         {
             _ = Task.Run(() =>
             {

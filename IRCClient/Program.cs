@@ -2,8 +2,8 @@
 using System.Text;
 using IRC.Shared.Types;
 using IRC.Shared.Modules;
-using System.ComponentModel;
 
+string currentInput = "";
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 Console.InputEncoding = System.Text.Encoding.UTF8;
 
@@ -14,6 +14,21 @@ async Task SendAsync(ClientWebSocket client, string message)
 {
     byte[] sendBuf = Encoding.UTF8.GetBytes(message);
     await client.SendAsync(new ArraySegment<byte>(sendBuf), WebSocketMessageType.Text, true, CancellationToken.None);
+}
+
+void WriteConsole(string message)
+{
+    int currentLineCursor = Console.CursorLeft;
+    int currentTop = Console.CursorTop;
+
+    Console.SetCursorPosition(0, currentTop);
+    Console.Write(new string(' ', Console.WindowWidth - 1));
+    Console.SetCursorPosition(0, currentTop);
+
+    Console.WriteLine(message);
+    Console.Write("メッセージを入力: "+ currentInput);
+
+    Console.SetCursorPosition(currentLineCursor, Console.CursorTop);
 }
 
 async Task ReceiveLoop(ClientWebSocket client)
@@ -35,15 +50,15 @@ async Task ReceiveLoop(ClientWebSocket client)
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 var json = IRCModule.MessageToJson(message);
 
-                if (json != null && json.Type == IRCMessageTypes.Chat)
+                if (json != null && (json.Type == IRCMessageTypes.Chat || json.Type == IRCMessageTypes.Notify))
                 {
-                    Console.WriteLine(json.Message);
+                    WriteConsole(json.Message);
                 }
 
                 if (json.Type == IRCMessageTypes.CommandResponse)
                 {
-                    Console.WriteLine(json.Message);
-                    Console.WriteLine(json.Special);
+                    WriteConsole(json.Message);
+                    WriteConsole(json.Special);
                 }
             }
         }
@@ -109,25 +124,47 @@ string BuildSendJson(string input)
 
 try
 {
-    async Task Main()
+    await Client.ConnectAsync(ServerUri, CancellationToken.None);
+    _ = ReceiveLoop(Client);
+
+    Console.Write("メッセージを入力: ");
+
+    while (Client.State == WebSocketState.Open)
     {
-        await Client.ConnectAsync(ServerUri, CancellationToken.None);
-
-        _ = ReceiveLoop(Client);
-
-        while (true)
+        if (Console.KeyAvailable)
         {
-            Console.Write("メッセージを入力: ");
-            string input = Console.ReadLine() ?? "";
+            var key = Console.ReadKey(true);
+            if (key.Key == ConsoleKey.Enter)
+            {
+                if (!string.IsNullOrEmpty(currentInput))
+                {
+                    string toSend = currentInput;
 
-            var jsonMessage = BuildSendJson(input);
-            await SendAsync(Client, jsonMessage);
+                    Console.WriteLine();
+                    currentInput = "";
+                    Console.Write("メッセージを入力: ");
+
+                    var jsonMessage = BuildSendJson(toSend);
+                    await SendAsync(Client, jsonMessage);
+                }
+            }
+            else if (key.Key == ConsoleKey.Backspace)
+            {
+                if (currentInput.Length > 0)
+                {
+                    currentInput = currentInput.Remove(currentInput.Length - 1);
+                    Console.Write("\b \b");
+                }
+            }
+            else if (!char.IsControl(key.KeyChar))
+            {
+                currentInput += key.KeyChar;
+                Console.Write(key.KeyChar);
+            }
         }
+        await Task.Delay(10);
     }
-
-    await Main();
-}
-catch
+} catch
 {
     return;
 }

@@ -24,6 +24,14 @@ while (true)
         _ = Task.Run(() =>
         {
             SocketManager sockManager = new(stream, 30 * 1000);
+            ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
+            {
+                Type = IRCMessageTypes.Notify,
+                Message = $"[join] {sockManager.GUID.Substring(32)} has joiend",
+                Channel = sockManager.currentChannel,
+                Special = null
+            }), sockManager);
+
             sockManager.OnMessage = (manager, message, opcode, payload) =>
             {
                 if (string.IsNullOrEmpty(message)) return;
@@ -39,7 +47,7 @@ while (true)
                     ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
                     {
                         Type = IRCMessageTypes.Chat,
-                        Message = json.Message,
+                        Message = $"[{sockManager.GUID.Substring(32)}] {json.Message}",
                         Channel = null,
                         Special = null
                     }), sockManager);
@@ -52,6 +60,13 @@ while (true)
             };
             sockManager.OnClose = (manager) =>
             {
+                ClientManager.Broadcast(IRCModule.JsonToMessage(new IRCResponseJson
+                {
+                    Type = IRCMessageTypes.Notify,
+                    Message = $"[leave] {sockManager.GUID.Substring(32)} has left",
+                    Channel = sockManager.currentChannel,
+                    Special = null
+                }), sockManager);
                 Console.WriteLine("[info] client closed connection");
             };
             sockManager.Listen();
@@ -67,7 +82,8 @@ static void HandleCommand(IRCResponseJson json, SocketManager manager)
             if (json.Channel == null || json.Channel == "") break;
             manager.currentChannel = json.Channel;
 
-            var Response = IRCModule.JsonToMessage(new IRCResponseJson{
+            var Response = IRCModule.JsonToMessage(new IRCResponseJson
+            {
                 Type = IRCMessageTypes.CommandResponse,
                 Message = $"now your channel in {json.Channel}",
                 Channel = null,

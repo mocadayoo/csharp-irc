@@ -9,6 +9,8 @@ namespace IRCServer.Utils;
 public class SocketManager : ISendable
 {
     private readonly NetworkStream _stream;
+    private bool _isClosed = false;
+    public string GUID = Guid.NewGuid().ToString();
     public string currentChannel = "default";
     public Action<SocketManager, string?, byte, byte[]>? OnMessage { get; set; }
     public Action<SocketManager>? OnClose { get; set; }
@@ -145,6 +147,9 @@ public class SocketManager : ISendable
 
     public void Close()
     {
+        if (_isClosed) return;
+        _isClosed = true;
+        
         OnClose?.Invoke(this);
         _stream.Close();
         ClientManager.Remove(this);
