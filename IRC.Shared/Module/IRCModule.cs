@@ -3,7 +3,6 @@ using IRC.Shared.Types;
 
 namespace IRC.Shared.Modules;
 
-// TODO: room機能などを追加
 // TODO: ratelimitなど追加
 public class IRCModule
 {

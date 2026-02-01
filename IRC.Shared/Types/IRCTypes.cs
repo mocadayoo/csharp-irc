@@ -9,12 +9,13 @@ public enum IRCMessageTypes
     HEARTBEAT,
     PONG,
     Chat,
-    Command
+    Command,
+    CommandResponse
 }
 public class IRCResponseJson
 {
     public IRCMessageTypes Type { get; set; }
     public string? Message { get; set; } = string.Empty;
-    public string? Channel { get; set; } = string.Empty;
+    public string? Channel { get; set; } = "default";
     public string? Special  { get; set; } = string.Empty;
 }

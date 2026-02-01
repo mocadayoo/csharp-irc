@@ -8,7 +8,6 @@ namespace IRCServer.Utils;
 
 public static class SocketUtils
 {
-    // TODO: heartbeatなどのデフォルトで提供するアクションの実装
     public static bool HeartBeat(SocketManager manager, byte opcode)
     {
         if (opcode == Opcode.Ping)

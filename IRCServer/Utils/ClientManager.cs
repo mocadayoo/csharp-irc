@@ -20,19 +20,22 @@ public static class ClientManager
         }
     }
 
-    public static void Broadcast(string message)
+    public static void Broadcast(string message, SocketManager sender)
     {
         foreach (var client in _clients)
         {
             _ = Task.Run(() =>
             {
-                try
+                if (client.currentChannel == sender.currentChannel)
                 {
-                    client.Send(message);
-                }
-                catch
-                {
-                    return;
+                    try
+                    {
+                        client.Send(message);
+                    }
+                    catch
+                    {
+                        return;
+                    }
                 }
             });
         }

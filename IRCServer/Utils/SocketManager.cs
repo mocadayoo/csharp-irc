@@ -9,6 +9,7 @@ namespace IRCServer.Utils;
 public class SocketManager : ISendable
 {
     private readonly NetworkStream _stream;
+    public string currentChannel = "default";
     public Action<SocketManager, string?, byte, byte[]>? OnMessage { get; set; }
     public Action<SocketManager>? OnClose { get; set; }
 

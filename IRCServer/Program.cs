@@ -7,8 +7,6 @@ Console.WriteLine("[info] startup..");
 
 TcpListener wsApp = new(IPAddress.Parse("127.0.0.1"), 8080); // localの8080ポートで作成
 
-// TODO: channel分けをしたい。 (typenなどの変更が必要)
-// TODO: commandなど特殊系の追加をしたい。
 wsApp.Start();
 while (true)
 {
@@ -44,7 +42,12 @@ while (true)
                         Message = json.Message,
                         Channel = null,
                         Special = null
-                    }));
+                    }), sockManager);
+                }
+
+                if (json.Type == IRCMessageTypes.Command)
+                {
+                    HandleCommand(json, sockManager);
                 }
             };
             sockManager.OnClose = (manager) =>
@@ -53,5 +56,24 @@ while (true)
             };
             sockManager.Listen();
         });
+    }
+}
+
+static void HandleCommand(IRCResponseJson json, SocketManager manager)
+{
+    switch (json.Message)
+    {
+        case "switch":
+            if (json.Channel == null || json.Channel == "") break;
+            manager.currentChannel = json.Channel;
+
+            var Response = IRCModule.JsonToMessage(new IRCResponseJson{
+                Type = IRCMessageTypes.CommandResponse,
+                Message = $"now your channel in {json.Channel}",
+                Channel = null,
+                Special = "success",
+            });
+            manager.Send(Response);
+            break;
     }
 }

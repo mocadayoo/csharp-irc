@@ -35,8 +35,15 @@ async Task ReceiveLoop(ClientWebSocket client)
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 var json = IRCModule.MessageToJson(message);
 
-                if (json != null && json.Type == IRCMessageTypes.Chat) {
+                if (json != null && json.Type == IRCMessageTypes.Chat)
+                {
                     Console.WriteLine(json.Message);
+                }
+
+                if (json.Type == IRCMessageTypes.CommandResponse)
+                {
+                    Console.WriteLine(json.Message);
+                    Console.WriteLine(json.Special);
                 }
             }
         }
@@ -63,6 +70,43 @@ async Task HeartBeat(ClientWebSocket ws, TimeSpan timeSpan)
     }
 }
 
+string BuildSendJson(string input)
+{
+    if (input[0] == '/')
+    {
+        string[] commandArgs = input.Substring(1).Split(' ');
+        string command = commandArgs[0].ToLower();
+
+        string jsonMessage = "";
+
+        switch (command)
+        {
+            case "switch":
+                string channelName = commandArgs[0];
+
+                jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
+                {
+                    Type = IRCMessageTypes.Command,
+                    Message = "switch",
+                    Channel = channelName,
+                    Special = null
+                });
+                break;
+            case "latency":
+                break;
+        }
+
+        return jsonMessage;
+    }
+    return IRCModule.JsonToMessage(new IRCResponseJson
+    {
+        Type = IRCMessageTypes.Chat,
+        Message = input,
+        Channel = null,
+        Special = null
+    });
+}
+
 try
 {
     async Task Main()
@@ -75,14 +119,8 @@ try
         {
             Console.Write("メッセージを入力: ");
             string input = Console.ReadLine() ?? "";
-            
-            var jsonMessage = IRCModule.JsonToMessage(new IRCResponseJson
-            {
-                Type = IRCMessageTypes.Chat,
-                Message = input,
-                Channel = null,
-                Special = null
-            });
+
+            var jsonMessage = BuildSendJson(input);
             await SendAsync(Client, jsonMessage);
         }
     }
